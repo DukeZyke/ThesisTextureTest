@@ -62,6 +62,7 @@ import numpy as np
 from hdri_skybox import HDRISkybox
 from molecular_engine import MolecularEngine, MoleculePresets, cpk_color, cpk_radius
 from molecule_hud_2d import MoleculeHUD2D
+from live_angles import get_visible_angles
 
 
 
@@ -114,6 +115,9 @@ BITMAP_FONT: dict[str, list[str]] = {
     "-": ["000", "000", "111", "000", "000"],
     " ": ["000", "000", "000", "000", "000"],
     "?": ["111", "001", "010", "000", "010"],
+    ".": ["000", "000", "000", "000", "010"],
+    "°": ["110", "110", "000", "000", "000"],
+    " ": ["000", "000", "000", "000", "000"],
 }
 
 PALETTE_LABELS = {
@@ -508,7 +512,7 @@ def draw_2d_overlay(
     lx, ly, lw, lh = clouds_toggle_rect(height)
     clouds_color = (0.22, 0.32, 0.26) if show_clouds else (0.18, 0.18, 0.22)
     draw_overlay_rect(lx, ly, lw, lh, clouds_color)
-    draw_overlay_text("CLOUDS", lx + 8, ly + 6)
+    draw_overlay_text("ELECTRON CLOUDS", lx + 8, ly + 6)
 
     px, py, pw, ph = pairs_toggle_rect(height)
     pairs_color = (0.22, 0.32, 0.26) if show_lone_pairs else (0.18, 0.18, 0.22)
@@ -1208,6 +1212,7 @@ def main() -> None:
     show_lone_pairs = False
     show_hybridization = False
     show_angles = False
+    show_live_angles = False
 
 
     def trigger_invalid_notif(message: str) -> None:
@@ -1447,10 +1452,11 @@ def main() -> None:
                         show_angles = not show_angles
                         continue
 
-                    # HYBRID
+                    # HYBRID = LIVE ANGLES
                     hybrid_rect = hybrid_toggle_rect(height)
                     if hybrid_rect[0] <= event.pos[0] <= hybrid_rect[0] + hybrid_rect[2] and hybrid_rect[1] <= event.pos[1] <= hybrid_rect[1] + hybrid_rect[3]:
-                        engine.set_toggle('hybridization', not show_hybridization)
+                        show_live_angles = not show_live_angles
+                        print("Live Angles toggled:", show_live_angles)
                         continue
 
                     # PAIRS
@@ -1737,7 +1743,7 @@ def main() -> None:
         show_lone_pairs = toggles['show_lone_pairs']
         show_hybridization = toggles['show_hybridization']
         show_angles = False
-        show_live_angles = False
+        show_live_angles = show_live_angles  # Preserve manual toggle state
 
         if topology_dirty:
             rebuild_engine_structure()
@@ -1874,8 +1880,47 @@ def main() -> None:
             show_lone_pairs,
             show_hybridization,
             show_angles,
+            show_live_angles,
             0  # fps
         )
+
+        # Render Live Bond Angles when toggled ON (top of 3D viewport)
+        if show_live_angles:
+            try:
+                angle_labels = get_visible_angles(atoms, bonds)
+                
+                # Setup 2D ortho projection exactly per feedback spec
+                glDisable(GL_LIGHTING)
+                glDisable(GL_DEPTH_TEST)
+                glDisable(GL_TEXTURE_2D)
+                
+                glMatrixMode(GL_PROJECTION)
+                glPushMatrix()
+                glLoadIdentity()
+                glOrtho(0, width, height, 0, -1, 1)
+                
+                glMatrixMode(GL_MODELVIEW)
+                glPushMatrix()
+                glLoadIdentity()
+                
+                # Bright yellow, no lighting
+                glColor3f(1.0, 1.0, 0.0)
+                
+                for angle_text, (sx, sy) in angle_labels:
+                    draw_overlay_text(angle_text, float(sx), float(sy), pixel=2)
+                
+                # Cleanup: restore 3D matrices
+                glPopMatrix()
+                glMatrixMode(GL_PROJECTION)
+                glPopMatrix()
+                glMatrixMode(GL_MODELVIEW)
+                
+                glEnable(GL_LIGHTING)
+                glEnable(GL_DEPTH_TEST)
+                
+            except Exception as e:
+                print(f"Live angles render error: {e}")
+        
         invalid_notif.draw(width, height, pygame.time.get_ticks())
 
         pygame.display.flip()
