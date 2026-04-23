@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pygame
 from OpenGL.GL import (
+    GL_COMPILE,
     GL_LINEAR,
     GL_RGB,
     GL_RGBA,
@@ -18,7 +19,11 @@ from OpenGL.GL import (
     glDisable,
     glEnable,
     glEnd,
+    glEndList,
+    glGenLists,
     glGenTextures,
+    glCallList,
+    glNewList,
     glNormal3f,
     glTexCoord2f,
     glTexImage2D,
@@ -51,6 +56,7 @@ class ObjModel:
     normals: List[Vec3]
     triangles: List[MeshTriangle]
     materials: Dict[str, Material] = field(default_factory=dict)
+    display_list_id: Optional[int] = None
 
     def upload_textures(self) -> None:
         for material in self.materials.values():
@@ -100,6 +106,18 @@ class ObjModel:
         glBindTexture(GL_TEXTURE_2D, material.texture_id)
 
     def draw(self) -> None:
+        if self.display_list_id is not None:
+            glCallList(self.display_list_id)
+            return
+
+        self.display_list_id = glGenLists(1)
+        glNewList(self.display_list_id, GL_COMPILE)
+        try:
+            self._draw_immediate()
+        finally:
+            glEndList()
+
+    def _draw_immediate(self) -> None:
         current_material: Optional[str] = None
 
         for triangle in self.triangles:

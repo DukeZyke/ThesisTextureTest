@@ -9,12 +9,19 @@ except ImportError:
 # ---------------------------------------------------------
 # SHARED SETTINGS (single source of truth)
 # ---------------------------------------------------------
-ATOM_MODEL_PATH = os.path.join("assets", "atomv3", "rdmblkv2.obj")
-BOND_MODEL_PATH = os.path.join("assets", "bondv2", "rdmlinev2.obj")
+ATOM_MODEL_PATH = os.path.join("assets", "atom", "atom.obj")
+BOND_MODEL_PATH = os.path.join("assets", "bond", "bond.obj")
 
-OXYGEN_SCALE = 0.20
-HYDROGEN_SCALE = 0.20
-BOND_THICKNESS = 0.05
+MATERIAL_LIBRARY_ROOT = "assets/atom"
+USE_ATOM_KIND_OVERRIDES = True
+USE_ATOM_MTL_OVERRIDES = True
+
+CPK_BASE_RADIUS = 1.7
+BOND_THICKNESS = 0.085
+
+OXYGEN_SCALE = 1.52 # CPK O
+HYDROGEN_SCALE = 1.10 # CPK H
+# Auto-applied via molecular_engine.cpk_radius()
 
 
 # ---------------------------------------------------------
